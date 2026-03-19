@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +13,7 @@ router = APIRouter()
 class SetupInitRequest(BaseModel):
     full_name: str
     email: str
-    password: str
+    password: str = Field(..., min_length=8)
 
 
 @router.get("/setup/status")

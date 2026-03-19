@@ -16,7 +16,10 @@ export default function SetupPage() {
 
   useEffect(() => {
     fetch(`${BASE}/api/v1/setup/status`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("status check failed");
+        return r.json();
+      })
       .then((data) => {
         if (!data.needs_setup) router.replace("/login");
         else setChecking(false);
