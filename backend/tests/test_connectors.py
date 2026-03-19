@@ -1,6 +1,7 @@
 import pytest
 from app.connectors.base import BaseConnector, EvidenceItem, CONNECTOR_REGISTRY
 from app.connectors.manual import ManualConnector
+from app.connectors.github import GitHubConnector
 
 
 def test_evidence_item_fields():
@@ -24,3 +25,7 @@ async def test_manual_connector_collect_returns_empty():
     c = ManualConnector()
     result = await c.collect("system-1", {})
     assert result == []
+
+
+def test_github_connector_registered():
+    assert "github" in CONNECTOR_REGISTRY
