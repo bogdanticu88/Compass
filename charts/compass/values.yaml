@@ -19,6 +19,7 @@ worker:
   image: bogdanticu88/compass-worker
   tag: latest
   replicaCount: 1
+  port: 0
   resources:
     requests:
       cpu: 100m
