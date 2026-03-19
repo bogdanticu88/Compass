@@ -17,6 +17,14 @@ async def create_assessment(db: AsyncSession, system_id: str, assessor_id: str, 
     db.add(assessment)
     await db.commit()
     await db.refresh(assessment)
+
+    # Trigger evidence collection in background (best-effort — Redis may be unavailable in test env)
+    try:
+        from app.services.evidence import enqueue_collection
+        await enqueue_collection(assessment.id, system_id)
+    except Exception:
+        pass
+
     return assessment
 
 

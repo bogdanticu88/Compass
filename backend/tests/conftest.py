@@ -69,3 +69,35 @@ async def assessor_user(db):
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@pytest_asyncio.fixture
+async def ai_system(db, admin_user):
+    from app.models.system import AISystem, RiskTier, SystemStatus
+    system = AISystem(
+        name="Test AI System",
+        owner_id=admin_user.id,
+        risk_tier=RiskTier.high,
+        status=SystemStatus.active,
+    )
+    db.add(system)
+    await db.commit()
+    await db.refresh(system)
+    return system
+
+
+@pytest_asyncio.fixture
+async def seeded_controls(db):
+    """Insert all framework controls into the test DB."""
+    from app.frameworks import FRAMEWORKS
+    from app.models.control import Control
+    for slug, pack in FRAMEWORKS.items():
+        for ctrl_def in pack.controls:
+            db.add(Control(
+                framework=slug,
+                article_ref=ctrl_def.article_ref,
+                title=ctrl_def.title,
+                requirement=ctrl_def.requirement,
+                evidence_types=ctrl_def.evidence_types,
+            ))
+    await db.commit()

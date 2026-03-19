@@ -1,24 +1,6 @@
 import pytest
 import pytest_asyncio
 
-from app.frameworks import FRAMEWORKS
-from app.models.control import Control
-
-
-@pytest_asyncio.fixture
-async def seeded_controls(db):
-    """Insert framework controls directly into the test DB."""
-    for slug, pack in FRAMEWORKS.items():
-        for ctrl_def in pack.controls:
-            db.add(Control(
-                framework=slug,
-                article_ref=ctrl_def.article_ref,
-                title=ctrl_def.title,
-                requirement=ctrl_def.requirement,
-                evidence_types=ctrl_def.evidence_types,
-            ))
-    await db.commit()
-
 
 @pytest_asyncio.fixture
 async def system_and_token(client, assessor_user):
