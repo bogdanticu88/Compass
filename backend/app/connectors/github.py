@@ -1,10 +1,10 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import ClassVar
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, cast, ARRAY, String
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import settings
@@ -20,10 +20,14 @@ async def get_controls_for_types(evidence_types: list[str]) -> list[Control]:
     engine = create_async_engine(settings.database_url)
     SessionMaker = async_sessionmaker(engine, expire_on_commit=False)
     async with SessionMaker() as db:
-        result = await db.execute(select(Control))
+        result = await db.execute(
+            select(Control).where(
+                Control.evidence_types.overlap(cast(evidence_types, ARRAY(String)))
+            )
+        )
         controls = result.scalars().all()
     await engine.dispose()
-    return [c for c in controls if any(et in c.evidence_types for et in evidence_types)]
+    return list(controls)
 
 
 @register
@@ -60,11 +64,18 @@ class GitHubConnector(BaseConnector):
                 releases_resp = await client.get(f"{GITHUB_API}/repos/{repo}/releases?per_page=10")
                 releases_resp.raise_for_status()
                 releases_data = releases_resp.json()
+        except httpx.HTTPStatusError as exc:
+            logger.error(
+                "GitHub API returned %s for repo %s — check token/permissions",
+                exc.response.status_code,
+                repo,
+            )
+            return []
         except Exception:
-            logger.exception("GitHub API request failed for repo %s", repo)
+            logger.exception("GitHub API request failed for repo %s (network/timeout)", repo)
             return []
 
-        collected_at = datetime.utcnow().isoformat()
+        collected_at = datetime.now(UTC).isoformat()
 
         payloads: dict[str, str] = {
             "audit_logs": json.dumps({
@@ -85,7 +96,16 @@ class GitHubConnector(BaseConnector):
                 "collected_at": collected_at,
             }),
             "robustness_tests": json.dumps({
-                "test_runs": [r for r in runs_data if "test" in r.get("name", "").lower()],
+                "test_runs": [
+                    {
+                        "id": r["id"],
+                        "name": r["name"],
+                        "conclusion": r.get("conclusion"),
+                        "created_at": r["created_at"],
+                    }
+                    for r in runs_data
+                    if "test" in r.get("name", "").lower()
+                ],
                 "collected_at": collected_at,
             }),
             "model_versioning_records": json.dumps({
