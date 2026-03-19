@@ -51,3 +51,31 @@ async def test_get_system(client, assessor_user):
 async def test_systems_requires_auth(client):
     resp = await client.get("/api/v1/systems")
     assert resp.status_code == 401
+
+
+async def test_update_system(client, assessor_user):
+    login = await client.post("/api/v1/auth/login", json={"email": "assessor@compass.dev", "password": "password123"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create = await client.post("/api/v1/systems", json={"name": "System A", "risk_tier": "high"}, headers=headers)
+    system_id = create.json()["id"]
+
+    resp = await client.patch(f"/api/v1/systems/{system_id}", json={"name": "System A Updated"}, headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "System A Updated"
+
+
+async def test_delete_system(client, assessor_user):
+    login = await client.post("/api/v1/auth/login", json={"email": "assessor@compass.dev", "password": "password123"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create = await client.post("/api/v1/systems", json={"name": "To Delete", "risk_tier": "minimal"}, headers=headers)
+    system_id = create.json()["id"]
+
+    resp = await client.delete(f"/api/v1/systems/{system_id}", headers=headers)
+    assert resp.status_code == 204
+
+    get = await client.get(f"/api/v1/systems/{system_id}", headers=headers)
+    assert get.status_code == 404

@@ -37,3 +37,9 @@ dev-dependencies = [
     "pytest-asyncio==0.24.0",
     "pytest-cov==5.0.0",
 ]
+
+[tool.coverage.run]
+omit = [
+    "app/scripts/*",
+    "app/workers/*",
+]

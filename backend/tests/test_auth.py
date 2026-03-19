@@ -40,3 +40,19 @@ async def test_me_returns_current_user(client, admin_user):
 async def test_me_requires_auth(client):
     resp = await client.get("/api/v1/auth/me")
     assert resp.status_code == 401
+
+
+async def test_refresh_token(client, admin_user):
+    login = await client.post("/api/v1/auth/login", json={
+        "email": "admin@compass.dev",
+        "password": "password123",
+    })
+    refresh_token = login.json()["refresh_token"]
+    resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+    assert resp.status_code == 200
+    assert "access_token" in resp.json()
+
+
+async def test_refresh_with_invalid_token(client):
+    resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": "invalid.token.here"})
+    assert resp.status_code == 401
