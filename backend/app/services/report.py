@@ -1,5 +1,6 @@
 import io
 from datetime import datetime, timedelta, timezone
+from xml.sax.saxutils import escape
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -101,7 +102,7 @@ def render_pdf(report: dict) -> bytes:
     story.append(Spacer(1, 0.2*cm))
     header = ["Framework", "Article", "Title", "Evidence"]
     rows = [header] + [
-        [c["framework"], c["article_ref"], c["title"][:50], c["evidence_status"]]
+        [escape(c["framework"]), escape(c["article_ref"]), escape(c["title"][:50]), escape(c["evidence_status"])]
         for c in report["controls"]
     ]
     tbl = Table(rows, colWidths=[3*cm, 2.5*cm, 9*cm, 2.5*cm])
@@ -121,7 +122,7 @@ def render_pdf(report: dict) -> bytes:
         story.append(Spacer(1, 0.2*cm))
         fheader = ["Severity", "Description", "Status"]
         frows = [fheader] + [
-            [f["severity"], f["description"][:70], f["status"]]
+            [escape(f["severity"]), escape(f["description"][:70]), escape(f["status"])]
             for f in report["findings"]
         ]
         ftbl = Table(frows, colWidths=[2.5*cm, 12*cm, 2.5*cm])

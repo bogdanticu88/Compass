@@ -1,3 +1,5 @@
+import asyncio
+from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
@@ -12,7 +14,7 @@ router = APIRouter()
 @router.get("/assessments/{assessment_id}/report")
 async def get_report(
     assessment_id: str,
-    format: str = "json",
+    format: Literal["json", "pdf"] = "json",
     db=Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -21,7 +23,8 @@ async def get_report(
         raise HTTPException(status_code=404, detail="Assessment not found")
 
     if format == "pdf":
-        pdf_bytes = render_pdf(report)
+        loop = asyncio.get_event_loop()
+        pdf_bytes = await loop.run_in_executor(None, render_pdf, report)
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
