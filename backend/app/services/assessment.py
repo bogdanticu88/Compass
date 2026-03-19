@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,6 +7,9 @@ from app.models.assessment import Assessment
 from app.models.control import Control
 from app.models.evidence import Evidence
 from app.models.finding import Finding, FindingStatus, Severity
+from app.services.evidence import enqueue_collection
+
+logger = logging.getLogger(__name__)
 
 
 async def create_assessment(db: AsyncSession, system_id: str, assessor_id: str, frameworks: list[str], due_date: str | None) -> Assessment:
@@ -20,10 +25,9 @@ async def create_assessment(db: AsyncSession, system_id: str, assessor_id: str, 
 
     # Trigger evidence collection in background (best-effort — Redis may be unavailable in test env)
     try:
-        from app.services.evidence import enqueue_collection
         await enqueue_collection(assessment.id, system_id)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Evidence collection enqueue failed (non-fatal): %s", exc)
 
     return assessment
 

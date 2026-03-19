@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.connector_config import ConnectorConfig
+from app.models.system import AISystem
 from app.models.user import User
 from app.schemas.connector import ConnectorConfigCreate, ConnectorConfigRead
 from app.services.auth import get_current_user
@@ -30,6 +32,11 @@ async def create_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Verify system exists
+    system_result = await db.execute(select(AISystem).where(AISystem.id == system_id))
+    if not system_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="System not found")
+
     cfg = ConnectorConfig(
         system_id=system_id,
         connector_name=body.connector_name,
@@ -37,8 +44,15 @@ async def create_config(
         is_enabled=body.is_enabled,
     )
     db.add(cfg)
-    await db.commit()
-    await db.refresh(cfg)
+    try:
+        await db.commit()
+        await db.refresh(cfg)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Connector '{body.connector_name}' is already configured for this system.",
+        )
     return cfg
 
 
