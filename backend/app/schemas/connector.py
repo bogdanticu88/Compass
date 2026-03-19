@@ -15,3 +15,13 @@ class ConnectorConfigRead(BaseModel):
     is_enabled: bool
 
     model_config = {"from_attributes": True}
+
+
+class ConnectorConfigReadSafe(BaseModel):
+    """Response schema — omits config to avoid leaking stored credentials."""
+    id: str
+    system_id: str
+    connector_name: str
+    is_enabled: bool
+
+    model_config = {"from_attributes": True}

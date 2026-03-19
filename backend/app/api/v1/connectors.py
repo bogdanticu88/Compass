@@ -6,14 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.connector_config import ConnectorConfig
 from app.models.system import AISystem
-from app.models.user import User
-from app.schemas.connector import ConnectorConfigCreate, ConnectorConfigRead
-from app.services.auth import get_current_user
+from app.models.user import Role, User
+from app.schemas.connector import ConnectorConfigCreate, ConnectorConfigRead, ConnectorConfigReadSafe
+from app.services.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/systems/{system_id}/connectors", tags=["connectors"])
 
 
-@router.get("", response_model=list[ConnectorConfigRead])
+@router.get("", response_model=list[ConnectorConfigReadSafe])
 async def list_configs(
     system_id: str,
     db: AsyncSession = Depends(get_db),
@@ -25,12 +25,12 @@ async def list_configs(
     return result.scalars().all()
 
 
-@router.post("", response_model=ConnectorConfigRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ConnectorConfigReadSafe, status_code=status.HTTP_201_CREATED)
 async def create_config(
     system_id: str,
     body: ConnectorConfigCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles(Role.admin, Role.assessor)),
 ):
     # Verify system exists
     system_result = await db.execute(select(AISystem).where(AISystem.id == system_id))
@@ -61,7 +61,7 @@ async def delete_config(
     system_id: str,
     connector_name: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles(Role.admin, Role.assessor)),
 ):
     result = await db.execute(
         select(ConnectorConfig).where(
