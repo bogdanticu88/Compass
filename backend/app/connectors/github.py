@@ -4,30 +4,11 @@ from datetime import datetime, UTC
 from typing import ClassVar
 
 import httpx
-from sqlalchemy import select, cast, ARRAY, String
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.config import settings
-from app.connectors.base import BaseConnector, EvidenceItem, register
-from app.models.control import Control
+from app.connectors.base import BaseConnector, EvidenceItem, get_controls_for_types, register
 
 GITHUB_API = "https://api.github.com"
 logger = logging.getLogger(__name__)
-
-
-async def get_controls_for_types(evidence_types: list[str]) -> list[Control]:
-    """Load controls from DB whose evidence_types overlap with the given list."""
-    engine = create_async_engine(settings.database_url)
-    SessionMaker = async_sessionmaker(engine, expire_on_commit=False)
-    async with SessionMaker() as db:
-        result = await db.execute(
-            select(Control).where(
-                Control.evidence_types.overlap(cast(evidence_types, ARRAY(String)))
-            )
-        )
-        controls = result.scalars().all()
-    await engine.dispose()
-    return list(controls)
 
 
 @register

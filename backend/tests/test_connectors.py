@@ -99,3 +99,85 @@ async def test_github_connector_missing_config_returns_empty():
     connector = GitHubConnector()
     items = await connector.collect("system-1", {})  # no token, no repo
     assert items == []
+
+
+from app.connectors.azure_devops import AzureDevOpsConnector
+
+
+def test_azure_devops_registered():
+    assert "azure_devops" in CONNECTOR_REGISTRY
+
+
+def test_azure_devops_evidence_types():
+    c = AzureDevOpsConnector()
+    assert "audit_logs" in c.evidence_types
+    assert "model_versioning_records" in c.evidence_types
+
+
+@pytest.mark.asyncio
+async def test_azure_devops_returns_evidence_for_matching_controls():
+    builds_response = {
+        "value": [
+            {"id": 1, "buildNumber": "20260101.1", "status": "completed",
+             "result": "succeeded", "startTime": "2026-01-01T00:00:00Z"},
+        ]
+    }
+    releases_response = {
+        "value": [
+            {"id": 1, "name": "Release-1", "createdOn": "2026-01-01T00:00:00Z",
+             "releaseDefinition": {"name": "Production Release"}},
+        ]
+    }
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(side_effect=[
+        make_mock_response(builds_response),
+        make_mock_response(releases_response),
+    ])
+
+    mock_controls = [
+        MagicMock(id="c1", evidence_types=["audit_logs"]),
+        MagicMock(id="c2", evidence_types=["model_versioning_records"]),
+        MagicMock(id="c3", evidence_types=["risk_register"]),  # not covered
+    ]
+
+    connector = AzureDevOpsConnector()
+    with patch("app.connectors.azure_devops.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.connectors.azure_devops.get_controls_for_types", return_value=mock_controls):
+            items = await connector.collect(
+                "system-1",
+                {"organization": "myorg", "project": "myproject", "token": "pat_token"},
+            )
+
+    covered_ids = {item.control_id for item in items}
+    assert "c1" in covered_ids
+    assert "c2" in covered_ids
+    assert "c3" not in covered_ids
+    assert all(item.source == "azure_devops" for item in items)
+
+
+@pytest.mark.asyncio
+async def test_azure_devops_handles_api_error_gracefully():
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(side_effect=Exception("Connection refused"))
+
+    connector = AzureDevOpsConnector()
+    with patch("app.connectors.azure_devops.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.connectors.azure_devops.get_controls_for_types", return_value=[]):
+            items = await connector.collect(
+                "system-1",
+                {"organization": "myorg", "project": "myproject", "token": "pat_token"},
+            )
+
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_azure_devops_missing_config_returns_empty():
+    connector = AzureDevOpsConnector()
+    items = await connector.collect("system-1", {})  # no org/project/token
+    assert items == []
