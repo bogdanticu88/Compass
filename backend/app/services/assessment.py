@@ -1,8 +1,10 @@
 import logging
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.assessment import Assessment
 from app.models.control import Control
 from app.models.evidence import Evidence
@@ -10,6 +12,15 @@ from app.models.finding import Finding, FindingStatus, Severity
 from app.services.evidence import enqueue_collection
 
 logger = logging.getLogger(__name__)
+
+
+def _evidence_status(evidence) -> str:
+    if evidence is None:
+        return "missing"
+    stale_threshold = datetime.now(timezone.utc) - timedelta(days=settings.evidence_stale_days)
+    if evidence.created_at < stale_threshold:
+        return "stale"
+    return str(evidence.status)
 
 
 async def create_assessment(db: AsyncSession, system_id: str, assessor_id: str, frameworks: list[str], due_date: str | None) -> Assessment:
@@ -55,11 +66,7 @@ async def get_assessment_detail(db: AsyncSession, assessment_id: str) -> dict | 
             "article_ref": c.article_ref,
             "title": c.title,
             "requirement": c.requirement,
-            "evidence_status": (
-                evidence_by_control[c.id].status
-                if c.id in evidence_by_control
-                else "missing"
-            ),
+            "evidence_status": _evidence_status(evidence_by_control.get(c.id)),
         }
         for c in controls
     ]

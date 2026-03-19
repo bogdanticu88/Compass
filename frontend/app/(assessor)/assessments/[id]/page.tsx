@@ -48,6 +48,11 @@ export default function AssessmentDetailPage({
     }
   }
 
+  async function handleRecollect() {
+    await api.assessments.recollect(id);
+    window.location.reload();
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen text-slate-500">
@@ -80,6 +85,9 @@ export default function AssessmentDetailPage({
                 {submitting ? "Submitting…" : "Submit for Review"}
               </Button>
             )}
+            <Button variant="outline" onClick={handleRecollect}>
+              Re-collect evidence
+            </Button>
           </div>
         </div>
 
@@ -106,7 +114,11 @@ export default function AssessmentDetailPage({
           {assessment.controls.map((ctrl) => (
             <Card
               key={ctrl.id}
-              className={ctrl.evidence_status === "missing" ? "border-red-200" : ""}
+              className={
+                ctrl.evidence_status === "missing" || ctrl.evidence_status === "stale"
+                  ? "border-orange-200"
+                  : ""
+              }
             >
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-4">

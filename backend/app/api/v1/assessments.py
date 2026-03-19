@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,7 @@ from app.services.assessment import create_assessment, get_assessment_detail, su
 from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=AssessmentRead, status_code=status.HTTP_201_CREATED)
@@ -52,3 +55,21 @@ async def submit(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     return assessment
+
+
+@router.post("/{assessment_id}/recollect", status_code=status.HTTP_202_ACCEPTED)
+async def recollect(
+    assessment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Assessment).where(Assessment.id == assessment_id))
+    assessment = result.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    try:
+        from app.services.evidence import enqueue_collection
+        await enqueue_collection(assessment.id, assessment.system_id)
+    except Exception as exc:
+        logger.warning("Evidence collection enqueue failed (non-fatal): %s", exc)
+    return {"message": "Evidence collection queued"}

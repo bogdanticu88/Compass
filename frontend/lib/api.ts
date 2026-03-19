@@ -59,6 +59,8 @@ export const api = {
       request<import("./types").Assessment>(`/assessments/${id}/submit`, {
         method: "POST",
       }),
+    recollect: (id: string) =>
+      request<{ message: string }>(`/assessments/${id}/recollect`, { method: "POST" }),
   },
   findings: {
     list: (assessmentId?: string) =>

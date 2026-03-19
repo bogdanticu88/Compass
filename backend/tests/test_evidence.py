@@ -107,3 +107,21 @@ async def test_manual_evidence_replaces_existing(client: AsyncClient, admin_user
     resp = await client.post("/api/v1/evidence", json=body, headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 201
     assert resp.json()["payload"] == "second upload"
+
+
+@pytest.mark.asyncio
+async def test_recollect_returns_202(client: AsyncClient, admin_user, ai_system, seeded_controls):
+    token = (await client.post("/api/v1/auth/login", json={"email": "admin@compass.dev", "password": "password123"})).json()["access_token"]
+    assessment_id = (await client.post(
+        "/api/v1/assessments",
+        json={"system_id": ai_system.id, "frameworks": ["eu_ai_act"]},
+        headers={"Authorization": f"Bearer {token}"},
+    )).json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/assessments/{assessment_id}/recollect",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    # Returns 202 Accepted — jobs are enqueued asynchronously (Redis not available in tests)
+    assert resp.status_code == 202
+    assert resp.json()["message"] == "Evidence collection queued"
