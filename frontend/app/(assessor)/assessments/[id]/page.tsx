@@ -25,6 +25,7 @@ export default function AssessmentDetailPage({
   const [assessment, setAssessment] = useState<AssessmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [recollecting, setRecollecting] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -49,8 +50,15 @@ export default function AssessmentDetailPage({
   }
 
   async function handleRecollect() {
-    await api.assessments.recollect(id);
-    window.location.reload();
+    setRecollecting(true);
+    try {
+      await api.assessments.recollect(id);
+      window.location.reload();
+    } catch {
+      // silently ignore — best-effort re-collection
+    } finally {
+      setRecollecting(false);
+    }
   }
 
   if (loading) {
@@ -85,8 +93,8 @@ export default function AssessmentDetailPage({
                 {submitting ? "Submitting…" : "Submit for Review"}
               </Button>
             )}
-            <Button variant="outline" onClick={handleRecollect}>
-              Re-collect evidence
+            <Button variant="outline" onClick={handleRecollect} disabled={recollecting}>
+              {recollecting ? "Collecting…" : "Re-collect evidence"}
             </Button>
           </div>
         </div>

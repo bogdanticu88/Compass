@@ -18,7 +18,10 @@ def _evidence_status(evidence) -> str:
     if evidence is None:
         return "missing"
     stale_threshold = datetime.now(timezone.utc) - timedelta(days=settings.evidence_stale_days)
-    if evidence.created_at < stale_threshold:
+    created_at = evidence.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    if created_at < stale_threshold:
         return "stale"
     return str(evidence.status)
 
