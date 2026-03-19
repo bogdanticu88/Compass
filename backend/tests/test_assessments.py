@@ -41,6 +41,48 @@ async def test_assessment_detail_has_controls(client, system_and_token, seeded_c
     assert len(resp.json()["controls"]) > 0
 
 
+async def test_assessment_detail_includes_evidence_payload(
+    client, system_and_token, seeded_controls
+):
+    sys_data, token = system_and_token
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create = await client.post(
+        "/api/v1/assessments",
+        json={"system_id": sys_data["id"], "frameworks": ["eu_ai_act"]},
+        headers=headers,
+    )
+    assessment_id = create.json()["id"]
+
+    detail = await client.get(f"/api/v1/assessments/{assessment_id}", headers=headers)
+    first_control = detail.json()["controls"][0]
+
+    # Before any evidence: payload and source are null
+    assert "evidence_payload" in first_control
+    assert "evidence_source" in first_control
+    assert first_control["evidence_payload"] is None
+    assert first_control["evidence_source"] is None
+
+    # Upload manual evidence for this control
+    await client.post(
+        "/api/v1/evidence",
+        json={
+            "assessment_id": assessment_id,
+            "control_id": first_control["id"],
+            "payload": "Manually entered evidence text",
+        },
+        headers=headers,
+    )
+
+    # Fetch again — payload and source must now be populated
+    detail2 = await client.get(f"/api/v1/assessments/{assessment_id}", headers=headers)
+    updated = next(
+        c for c in detail2.json()["controls"] if c["id"] == first_control["id"]
+    )
+    assert updated["evidence_payload"] == "Manually entered evidence text"
+    assert updated["evidence_source"] == "manual"
+
+
 async def test_submit_assessment_generates_findings(client, system_and_token, seeded_controls):
     sys_data, token = system_and_token
     headers = {"Authorization": f"Bearer {token}"}

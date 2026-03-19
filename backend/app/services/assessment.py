@@ -62,17 +62,19 @@ async def get_assessment_detail(db: AsyncSession, assessment_id: str) -> dict | 
     )
     evidence_by_control = {e.control_id: e for e in evidence_result.scalars().all()}
 
-    controls_with_status = [
-        {
+    controls_with_status = []
+    for c in controls:
+        ev = evidence_by_control.get(c.id)
+        controls_with_status.append({
             "id": c.id,
             "framework": c.framework,
             "article_ref": c.article_ref,
             "title": c.title,
             "requirement": c.requirement,
-            "evidence_status": _evidence_status(evidence_by_control.get(c.id)),
-        }
-        for c in controls
-    ]
+            "evidence_status": _evidence_status(ev),
+            "evidence_payload": ev.payload if ev else None,
+            "evidence_source": ev.source if ev else None,
+        })
 
     return {
         "id": assessment.id,

@@ -24,7 +24,9 @@ class ControlInAssessment(BaseModel):
     article_ref: str
     title: str
     requirement: str
-    evidence_status: str  # "collected" | "missing"
+    evidence_status: str  # "collected" | "stale" | "missing"
+    evidence_payload: str | None = None
+    evidence_source: str | None = None
 
     model_config = {"from_attributes": True}
 
