@@ -380,3 +380,83 @@ async def test_servicenow_missing_config_returns_empty():
     connector = ServiceNowConnector()
     items = await connector.collect("system-1", {})
     assert items == []
+
+
+from app.connectors.aws import AWSConnector
+
+def test_aws_connector_registered():
+    assert "aws" in CONNECTOR_REGISTRY
+
+
+def test_aws_connector_evidence_types():
+    c = AWSConnector()
+    assert "audit_logs" in c.evidence_types
+    assert "model_versioning_records" in c.evidence_types
+    assert "monitoring_logs" in c.evidence_types
+
+
+@pytest.mark.asyncio
+async def test_aws_connector_missing_config_returns_empty():
+    connector = AWSConnector()
+    items = await connector.collect("system-1", {})
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_aws_connector_returns_evidence_for_matching_controls():
+    mock_cloudtrail = MagicMock()
+    mock_cloudtrail.lookup_events.return_value = {
+        "Events": [
+            {"EventId": "e1", "EventName": "PutObject", "EventTime": "2026-01-01T00:00:00Z", "Username": "user1"},
+        ]
+    }
+    mock_sagemaker = MagicMock()
+    mock_sagemaker.list_model_packages.return_value = {
+        "ModelPackageSummaryList": [
+            {"ModelPackageName": "model-v1", "CreationTime": "2026-01-01T00:00:00Z", "ModelPackageStatus": "Completed"},
+        ]
+    }
+    mock_config_svc = MagicMock()
+    mock_config_svc.get_compliance_summary_by_config_rule.return_value = {
+        "ComplianceSummariesByConfigRule": []
+    }
+
+    def mock_boto3_client(service, **kwargs):
+        if service == "cloudtrail":
+            return mock_cloudtrail
+        if service == "sagemaker":
+            return mock_sagemaker
+        if service == "config":
+            return mock_config_svc
+        raise ValueError(f"Unexpected service: {service}")
+
+    mock_controls = [
+        MagicMock(id="c1", evidence_types=["audit_logs"]),
+        MagicMock(id="c2", evidence_types=["model_versioning_records"]),
+    ]
+
+    connector = AWSConnector()
+    with patch("app.connectors.aws.boto3.client", side_effect=mock_boto3_client):
+        with patch("app.connectors.aws.get_controls_for_types", return_value=mock_controls):
+            items = await connector.collect(
+                "system-1",
+                {"access_key_id": "AKIATEST", "secret_access_key": "secret", "region": "us-east-1"},
+            )
+
+    assert len(items) > 0
+    assert all(item.source == "aws" for item in items)
+
+
+@pytest.mark.asyncio
+async def test_aws_connector_handles_error_gracefully():
+    def mock_boto3_client(service, **kwargs):
+        raise Exception("Connection refused")
+
+    connector = AWSConnector()
+    with patch("app.connectors.aws.boto3.client", side_effect=mock_boto3_client):
+        items = await connector.collect(
+            "system-1",
+            {"access_key_id": "AKIATEST", "secret_access_key": "secret", "region": "us-east-1"},
+        )
+
+    assert items == []
