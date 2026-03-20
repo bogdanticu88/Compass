@@ -2,89 +2,190 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { isAuthenticated } from "@/lib/auth";
-import type { Assessment } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { isAuthenticated, clearToken } from "@/lib/auth";
+import type { Assessment, AISystem } from "@/lib/types";
+import {
+  ChevronLeft, LogOut, ClipboardList, Plus, CheckCircle,
+  Clock, FileEdit, AlertTriangle, Calendar,
+} from "lucide-react";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
-  draft: "secondary",
-  in_review: "default",
-  complete: "outline",
+const FW_LABELS: Record<string, string> = {
+  eu_ai_act: "EU AI Act", dora: "DORA", iso_42001: "ISO 42001", nist_ai_rmf: "NIST AI RMF",
+};
+
+const STATUS_STYLE: Record<string, string> = {
+  draft:     "bg-zinc-800 text-zinc-400 border border-zinc-700",
+  in_review: "bg-blue-600/20 text-blue-400 border border-blue-600/30",
+  complete:  "bg-green-600/20 text-green-400 border border-green-600/30",
+};
+
+const STATUS_ICON: Record<string, React.ElementType> = {
+  draft: FileEdit, in_review: Clock, complete: CheckCircle,
 };
 
 export default function AssessmentsPage() {
   const router = useRouter();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [systems,     setSystems]     = useState<AISystem[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [filter,      setFilter]      = useState<"all" | "draft" | "in_review" | "complete">("all");
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push("/login");
-      return;
-    }
-    api.assessments
-      .list()
-      .then(setAssessments)
+    if (!isAuthenticated()) { router.push("/login"); return; }
+    Promise.all([api.assessments.list(), api.systems.list()])
+      .then(([a, s]) => { setAssessments(a); setSystems(s); })
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
   }, [router]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen text-slate-500">
-        Loading…
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+      <div className="text-zinc-500 text-sm animate-pulse">Loading assessments…</div>
+    </div>
+  );
+
+  const systemById = Object.fromEntries(systems.map(s => [s.id, s]));
+  const counts = {
+    all:       assessments.length,
+    draft:     assessments.filter(a => a.status === "draft").length,
+    in_review: assessments.filter(a => a.status === "in_review").length,
+    complete:  assessments.filter(a => a.status === "complete").length,
+  };
+  const visible = filter === "all" ? assessments : assessments.filter(a => a.status === filter);
+
+  const now = new Date();
+  const overdue = assessments.filter(a =>
+    a.due_date && new Date(a.due_date) < now && a.status !== "complete"
+  ).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Assessments</h1>
-            <p className="text-slate-500 mt-1">Your governance assessments</p>
-          </div>
-          <Link href="/assessments/new">
-            <Button>New Assessment</Button>
+    <div className="min-h-screen bg-[#09090b] text-zinc-50">
+
+      {/* nav */}
+      <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between sticky top-0 bg-[#09090b]/95 backdrop-blur z-10">
+        <div className="flex items-center gap-4">
+          <Link href="/home" className="text-zinc-500 hover:text-zinc-300 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
           </Link>
+          <div className="flex items-center gap-2">
+            <Image src="/compass-logo-dark.jpg" alt="Compass" width={28} height={28}
+              className="w-7 h-7 object-contain mix-blend-screen" />
+            <span className="font-mono font-semibold text-zinc-50 tracking-tight text-sm">Compass</span>
+          </div>
+          <span className="text-zinc-700">/</span>
+          <div className="flex items-center gap-1.5">
+            <ClipboardList className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="text-sm text-zinc-400">Assessor Workbench</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {overdue > 0 && (
+            <div className="hidden sm:flex items-center gap-1.5 bg-red-950/40 border border-red-600/30 text-red-400 text-xs font-medium px-3 py-1.5 rounded-full">
+              <AlertTriangle className="w-3 h-3" />
+              {overdue} overdue
+            </div>
+          )}
+          <Link href="/assessments/new"
+            className="inline-flex items-center gap-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition-colors">
+            <Plus className="w-3.5 h-3.5" />
+            New Assessment
+          </Link>
+          <button onClick={() => { clearToken(); router.push("/login"); }}
+            className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+            <LogOut className="w-4 h-4" /><span className="hidden sm:inline">Sign out</span>
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+
+        {/* title + KPIs */}
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-50">Assessments</h1>
+          <p className="text-zinc-500 text-sm mt-0.5">Manage and track your AI governance assessments</p>
         </div>
 
-        {assessments.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-slate-500">
-              No assessments yet.{" "}
-              <Link href="/assessments/new" className="text-blue-600 hover:underline">
-                Start one.
-              </Link>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {([
+            ["All",       counts.all,       "text-zinc-400",   "border-zinc-800",        "all"],
+            ["Draft",     counts.draft,     "text-zinc-400",   "border-zinc-700",        "draft"],
+            ["In Review", counts.in_review, "text-blue-400",   "border-blue-600/20",     "in_review"],
+            ["Complete",  counts.complete,  "text-green-400",  "border-green-600/20",    "complete"],
+          ] as const).map(([label, count, color, border, key]) => (
+            <button key={key} onClick={() => setFilter(key)}
+              className={`bg-zinc-900 border ${border} rounded-xl p-4 text-left transition-all hover:border-zinc-600 ${filter === key ? "ring-1 ring-zinc-500" : ""}`}>
+              <p className="text-xs text-zinc-500 mb-1">{label}</p>
+              <p className={`text-2xl font-bold ${color}`}>{count}</p>
+            </button>
+          ))}
+        </div>
+
+        {/* list */}
+        {visible.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <ClipboardList className="w-10 h-10 text-zinc-700 mb-4" />
+            <p className="text-zinc-400 font-medium">No assessments yet</p>
+            <p className="text-zinc-600 text-sm mt-1 mb-6">Start your first assessment to begin collecting evidence</p>
+            <Link href="/assessments/new"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <Plus className="w-4 h-4" /> New Assessment
+            </Link>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {assessments.map((a) => (
-              <Link href={`/assessments/${a.id}`} key={a.id}>
-                <Card className="hover:border-blue-300 cursor-pointer transition-colors">
-                  <CardContent className="py-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        Assessment {a.id.slice(0, 8)}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {a.frameworks.join(", ")} · Due: {a.due_date ?? "—"}
-                      </p>
+          <div className="space-y-2">
+            {visible.map(a => {
+              const sys = systemById[a.system_id];
+              const Icon = STATUS_ICON[a.status] ?? Clock;
+              const isOverdue = a.due_date && new Date(a.due_date) < now && a.status !== "complete";
+              const daysLeft = a.due_date
+                ? Math.ceil((new Date(a.due_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                : null;
+              return (
+                <Link key={a.id} href={`/assessments/${a.id}`}
+                  className="group flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl transition-all">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      a.status === "complete" ? "bg-green-600/10" : a.status === "in_review" ? "bg-blue-600/10" : "bg-zinc-800"
+                    }`}>
+                      <Icon className={`w-4 h-4 ${a.status === "complete" ? "text-green-400" : a.status === "in_review" ? "text-blue-400" : "text-zinc-400"}`} />
                     </div>
-                    <Badge variant={STATUS_VARIANT[a.status]}>{a.status}</Badge>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    <div className="min-w-0">
+                      <p className="font-medium text-zinc-100 group-hover:text-white transition-colors">
+                        {sys?.name ?? "Unknown system"}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {a.frameworks.map(fw => (
+                          <span key={fw} className="text-xs text-zinc-500">
+                            {FW_LABELS[fw] ?? fw}
+                          </span>
+                        ))}
+                        {a.frameworks.length > 0 && (
+                          <span className="text-zinc-700 text-xs">·</span>
+                        )}
+                        <span className="text-xs font-mono text-zinc-600">{a.id.slice(0, 8)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                    {a.due_date && (
+                      <div className={`hidden sm:flex items-center gap-1 text-xs ${isOverdue ? "text-red-400" : daysLeft !== null && daysLeft <= 7 ? "text-orange-400" : "text-zinc-500"}`}>
+                        <Calendar className="w-3 h-3" />
+                        {isOverdue ? `${Math.abs(daysLeft!)}d overdue` : daysLeft !== null ? `${daysLeft}d` : a.due_date}
+                      </div>
+                    )}
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_STYLE[a.status]}`}>
+                      {a.status === "in_review" ? "In Review" : a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

@@ -17,8 +17,8 @@ test.describe("Smoke tests", () => {
     await page.locator("input[type=email]").fill(ADMIN_EMAIL);
     await page.locator("input[type=password]").fill(ADMIN_PASSWORD);
     await page.locator("button[type=submit]").click();
-    // Should redirect to dashboard after login
-    await expect(page).toHaveURL(/dashboard|assessments/, { timeout: 10_000 });
+    // Should redirect to home after login
+    await expect(page).toHaveURL(/home/, { timeout: 10_000 });
   });
 
   test("assessments list is accessible after login", async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe("Smoke tests", () => {
     await page.locator("input[type=email]").fill(ADMIN_EMAIL);
     await page.locator("input[type=password]").fill(ADMIN_PASSWORD);
     await page.locator("button[type=submit]").click();
-    await page.waitForURL(/dashboard|assessments/, { timeout: 10_000 });
+    await page.waitForURL(/home/, { timeout: 10_000 });
 
     // Navigate to assessments
     await page.goto("/assessments");
