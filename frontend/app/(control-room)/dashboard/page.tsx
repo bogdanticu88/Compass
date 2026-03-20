@@ -10,8 +10,9 @@ import type { AISystem, Assessment, Finding, DashboardStats } from "@/lib/types"
 import {
   LayoutDashboard, LogOut, ChevronLeft, AlertTriangle,
   TrendingUp, Shield, Activity, CheckCircle, Clock,
-  XCircle, BarChart3, Layers, Calendar,
+  XCircle, BarChart3, Layers, Calendar, Download, FileText, Code2,
 } from "lucide-react";
+import { generateMarkdown, generateHTML, downloadFile } from "@/lib/export-report";
 
 /* ── colour maps ──────────────────────────────────── */
 const RISK_PILL: Record<string, string> = {
@@ -127,6 +128,7 @@ export default function DashboardPage() {
   const [findings,    setFindings]    = useState<Finding[]>([]);
   const [stats,       setStats]       = useState<DashboardStats | null>(null);
   const [loading,     setLoading]     = useState(true);
+  const [exportOpen,  setExportOpen]  = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) { router.push("/login"); return; }
@@ -141,6 +143,19 @@ export default function DashboardPage() {
       <div className="text-zinc-500 text-sm animate-pulse">Loading dashboard…</div>
     </div>
   );
+
+  /* ── export handlers ────────────────────────────── */
+  function handleExport(format: "html" | "md") {
+    if (!stats) return;
+    const data = { systems, assessments, findings, stats, generatedAt: new Date() };
+    const ts = new Date().toISOString().slice(0, 10);
+    if (format === "md") {
+      downloadFile(generateMarkdown(data), `compass-report-${ts}.md`, "text/markdown");
+    } else {
+      downloadFile(generateHTML(data), `compass-report-${ts}.html`, "text/html");
+    }
+    setExportOpen(false);
+  }
 
   /* ── derived values ─────────────────────────────── */
   const activeSystems   = systems.filter(s => s.status === "active");
@@ -234,13 +249,47 @@ export default function DashboardPage() {
             <span className="text-sm text-zinc-400">Control Room</span>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {criticalCount > 0 && (
             <div className="hidden sm:flex items-center gap-1.5 bg-red-950/40 border border-red-600/30 text-red-400 text-xs font-medium px-3 py-1.5 rounded-full">
               <AlertTriangle className="w-3 h-3" />
               {criticalCount} critical open
             </div>
           )}
+
+          {/* Export dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setExportOpen(o => !o)}
+              className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            {exportOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
+                <div className="absolute right-0 top-full mt-1.5 z-20 w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden">
+                  <p className="text-xs text-zinc-500 px-3 pt-3 pb-1.5 font-medium">Export report as</p>
+                  <button
+                    onClick={() => handleExport("html")}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                  >
+                    <Code2 className="w-4 h-4 text-blue-400" />
+                    HTML report
+                  </button>
+                  <button
+                    onClick={() => handleExport("md")}
+                    className="w-full flex items-center gap-2.5 px-3 pb-3 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-violet-400" />
+                    Markdown report
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <button onClick={() => { clearToken(); router.push("/login"); }}
             className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
             <LogOut className="w-4 h-4" /><span className="hidden sm:inline">Sign out</span>
