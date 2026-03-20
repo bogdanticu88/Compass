@@ -14,6 +14,7 @@ const FRAMEWORKS = [
   { id: "dora",        label: "DORA",        desc: "Digital Operational Resilience Act" },
   { id: "iso_42001",   label: "ISO 42001",   desc: "AI management systems standard" },
   { id: "nist_ai_rmf", label: "NIST AI RMF", desc: "NIST AI Risk Management Framework" },
+  { id: "gdpr",        label: "GDPR",        desc: "EU General Data Protection Regulation" },
 ];
 
 const RISK_TIERS = [

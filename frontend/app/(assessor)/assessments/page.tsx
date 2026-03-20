@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 
 const FW_LABELS: Record<string, string> = {
-  eu_ai_act: "EU AI Act", dora: "DORA", iso_42001: "ISO 42001", nist_ai_rmf: "NIST AI RMF",
+  eu_ai_act: "EU AI Act", dora: "DORA", iso_42001: "ISO 42001",
+  nist_ai_rmf: "NIST AI RMF", gdpr: "GDPR",
 };
 
 const STATUS_STYLE: Record<string, string> = {

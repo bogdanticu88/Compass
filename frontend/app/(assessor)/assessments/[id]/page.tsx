@@ -9,11 +9,12 @@ import { isAuthenticated, getToken } from "@/lib/auth";
 import type { AssessmentDetail } from "@/lib/types";
 import {
   ChevronLeft, ClipboardList, CheckCircle, AlertCircle,
-  RefreshCw, Download, Send, ChevronDown, ChevronUp,
+  RefreshCw, Download, Send, ChevronDown, ChevronUp, ClipboardCheck,
 } from "lucide-react";
 
 const FW_LABELS: Record<string, string> = {
-  eu_ai_act: "EU AI Act", dora: "DORA", iso_42001: "ISO 42001", nist_ai_rmf: "NIST AI RMF",
+  eu_ai_act: "EU AI Act", dora: "DORA", iso_42001: "ISO 42001",
+  nist_ai_rmf: "NIST AI RMF", gdpr: "GDPR",
 };
 
 const EVIDENCE_STYLE: Record<string, { pill: string; dot: string }> = {
@@ -157,6 +158,13 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             <p className="text-xs text-zinc-600 font-mono mt-0.5">{assessment.id}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {assessment.status === "draft" && (
+              <Link href={`/assessments/${id}/questionnaire`}
+                className="inline-flex items-center gap-1.5 text-sm font-medium bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/40 text-blue-300 hover:text-blue-200 px-3 py-1.5 rounded-lg transition-colors">
+                <ClipboardCheck className="w-3.5 h-3.5" />
+                Guided Questionnaire
+              </Link>
+            )}
             <button onClick={handleRecollect} disabled={recollecting}
               className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${recollecting ? "animate-spin" : ""}`} />
