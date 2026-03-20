@@ -35,6 +35,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ email, password }),
       }),
+    register: (email: string, password: string, full_name: string) =>
+      request<import("./types").TokenResponse>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password, full_name }),
+      }),
     me: () => request<import("./types").User>("/auth/me"),
   },
   systems: {

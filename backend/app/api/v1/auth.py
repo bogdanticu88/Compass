@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.user import User
-from app.schemas.user import LoginRequest, RefreshRequest, TokenResponse, UserRead
-from app.services.auth import ALGORITHM, create_tokens, get_current_user, verify_password
+from app.models.user import Role, User
+from app.schemas.user import LoginRequest, RefreshRequest, TokenResponse, UserCreate, UserRead
+from app.services.auth import ALGORITHM, create_tokens, get_current_user, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -35,6 +35,23 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return create_tokens(user.id)
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
+    existing = await db.execute(select(User).where(User.email == body.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = User(
+        email=body.email,
+        hashed_password=hash_password(body.password),
+        full_name=body.full_name,
+        role=Role.assessor,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
     return create_tokens(user.id)
 
 
