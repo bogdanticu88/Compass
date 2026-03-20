@@ -5,7 +5,7 @@ services:
       target: prod
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
-    command: node server.js
+    command: pnpm start
     volumes: []
     environment:
       PORT: "3000"
