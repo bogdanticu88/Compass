@@ -472,6 +472,7 @@ def test_azure_connector_evidence_types():
     c = AzureConnector()
     assert "audit_logs" in c.evidence_types
     assert "monitoring_logs" in c.evidence_types
+    assert "model_versioning_records" in c.evidence_types
 
 
 @pytest.mark.asyncio
@@ -540,9 +541,10 @@ async def test_azure_connector_handles_api_error_gracefully():
 
     connector = AzureConnector()
     with patch("app.connectors.azure.httpx.AsyncClient", return_value=mock_client):
-        items = await connector.collect(
-            "system-1",
-            {"tenant_id": "t", "client_id": "c", "client_secret": "s", "subscription_id": "sub"},
-        )
+        with patch("app.connectors.azure.get_controls_for_types", return_value=[]):
+            items = await connector.collect(
+                "system-1",
+                {"tenant_id": "t", "client_id": "c", "client_secret": "s", "subscription_id": "sub"},
+            )
 
     assert items == []

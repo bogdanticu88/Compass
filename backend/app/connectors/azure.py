@@ -36,43 +36,58 @@ class AzureConnector(BaseConnector):
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 # Get OAuth2 token via client credentials
-                token_resp = await client.post(
-                    f"{LOGIN_URL}/{tenant_id}/oauth2/v2.0/token",
-                    data={
-                        "grant_type": "client_credentials",
-                        "client_id": client_id,
-                        "client_secret": client_secret,
-                        "scope": "https://management.azure.com/.default",
-                    },
-                )
-                token_resp.raise_for_status()
-                token = token_resp.json()["access_token"]
+                try:
+                    token_resp = await client.post(
+                        f"{LOGIN_URL}/{tenant_id}/oauth2/v2.0/token",
+                        data={
+                            "grant_type": "client_credentials",
+                            "client_id": client_id,
+                            "client_secret": client_secret,
+                            "scope": "https://management.azure.com/.default",
+                        },
+                    )
+                    token_resp.raise_for_status()
+                    token = token_resp.json()["access_token"]
+                except httpx.HTTPStatusError as exc:
+                    logger.error(
+                        "Azure token request failed (check tenant_id/client_id/client_secret): %s",
+                        exc.response.status_code,
+                    )
+                    return []
 
                 headers = {"Authorization": f"Bearer {token}"}
 
-                resources_resp = await client.get(
-                    f"{ARM_URL}/subscriptions/{subscription_id}/resources",
-                    params={"api-version": "2021-04-01"},
-                    headers=headers,
-                )
-                resources_resp.raise_for_status()
-                resources_data = resources_resp.json().get("value", [])
+                try:
+                    resources_resp = await client.get(
+                        f"{ARM_URL}/subscriptions/{subscription_id}/resources",
+                        params={"api-version": "2021-04-01"},
+                        headers=headers,
+                    )
+                    resources_resp.raise_for_status()
+                    resources_data = resources_resp.json().get("value", [])
 
-                roles_resp = await client.get(
-                    f"{ARM_URL}/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleAssignments",
-                    params={"api-version": "2022-04-01"},
-                    headers=headers,
-                )
-                roles_resp.raise_for_status()
-                role_assignments_data = roles_resp.json().get("value", [])
+                    roles_resp = await client.get(
+                        f"{ARM_URL}/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleAssignments",
+                        params={"api-version": "2022-04-01"},
+                        headers=headers,
+                    )
+                    roles_resp.raise_for_status()
+                    role_assignments_data = roles_resp.json().get("value", [])
 
-                policy_resp = await client.get(
-                    f"{ARM_URL}/subscriptions/{subscription_id}/providers/Microsoft.PolicyInsights/policyStates/latest/summarize",
-                    params={"api-version": "2019-10-01"},
-                    headers=headers,
-                )
-                policy_resp.raise_for_status()
-                policy_data = policy_resp.json().get("value", [])
+                    policy_resp = await client.get(
+                        f"{ARM_URL}/subscriptions/{subscription_id}/providers/Microsoft.PolicyInsights/policyStates/latest/summarize",
+                        params={"api-version": "2019-10-01"},
+                        headers=headers,
+                    )
+                    policy_resp.raise_for_status()
+                    policy_data = policy_resp.json().get("value", [])
+                except httpx.HTTPStatusError as exc:
+                    logger.error(
+                        "Azure ARM API error for subscription %s: %s",
+                        subscription_id,
+                        exc.response.status_code,
+                    )
+                    return []
 
             collected_at = datetime.now(UTC).isoformat()
 
@@ -101,20 +116,20 @@ class AzureConnector(BaseConnector):
                     "collected_at": collected_at,
                 }),
                 "model_versioning_records": json.dumps({
-                    "policy_compliance": policy_data,
+                    "policy_compliance": [
+                        {
+                            "policy_definition_id": item.get("policyDefinitionId"),
+                            "compliance_state": item.get("complianceState"),
+                            "resource_id": item.get("resourceId"),
+                        }
+                        for item in (policy_data if isinstance(policy_data, list) else [])
+                    ],
                     "collected_at": collected_at,
                 }),
             }
 
-        except httpx.HTTPStatusError as exc:
-            logger.error(
-                "Azure ARM API returned %s for subscription %s — check credentials",
-                exc.response.status_code,
-                subscription_id,
-            )
-            return []
-        except Exception:
-            logger.exception("Azure API request failed for subscription %s", subscription_id)
+        except Exception as exc:
+            logger.error("Azure connector failed: %s", exc, exc_info=False)
             return []
 
         controls = await get_controls_for_types(self.evidence_types)
