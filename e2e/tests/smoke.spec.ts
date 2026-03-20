@@ -7,9 +7,9 @@ const ADMIN_PASSWORD = "compass123";
 test.describe("Smoke tests", () => {
   test("login page loads", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByRole("heading")).toBeVisible();
     await expect(page.locator("input[type=email]")).toBeVisible();
     await expect(page.locator("input[type=password]")).toBeVisible();
+    await expect(page.locator("button[type=submit]")).toBeVisible();
   });
 
   test("admin can log in and reach dashboard", async ({ page }) => {

@@ -2,10 +2,10 @@ services:
   web:
     build:
       context: ./frontend
-      target: builder
+      target: prod
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
-    command: pnpm start
+    command: node server.js
     volumes: []
     environment:
       PORT: "3000"
