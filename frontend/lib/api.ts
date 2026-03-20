@@ -87,6 +87,17 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+  connectors: {
+    list: (systemId: string) =>
+      request<import("./types").ConnectorConfig[]>(`/systems/${systemId}/connectors`),
+    create: (systemId: string, data: { connector_name: string; config: Record<string, string>; is_enabled: boolean }) =>
+      request<import("./types").ConnectorConfig>(`/systems/${systemId}/connectors`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    delete: (systemId: string, connectorName: string) =>
+      request<void>(`/systems/${systemId}/connectors/${connectorName}`, { method: "DELETE" }),
+  },
   reports: {
     downloadUrl: (id: string, format: "json" | "pdf") =>
       `${BASE}/api/v1/assessments/${id}/report?format=${format}`,

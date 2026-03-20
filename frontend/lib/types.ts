@@ -58,6 +58,13 @@ export interface TokenResponse {
   token_type: string;
 }
 
+export interface ConnectorConfig {
+  id: string;
+  system_id: string;
+  connector_name: string;
+  is_enabled: boolean;
+}
+
 export interface DashboardStats {
   framework_compliance: Record<string, number | null>;
   overdue_assessments: Array<{

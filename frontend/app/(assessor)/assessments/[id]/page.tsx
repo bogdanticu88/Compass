@@ -9,7 +9,7 @@ import { isAuthenticated, getToken } from "@/lib/auth";
 import type { AssessmentDetail } from "@/lib/types";
 import {
   ChevronLeft, ClipboardList, CheckCircle, AlertCircle,
-  RefreshCw, Download, Send, ChevronDown, ChevronUp, ClipboardCheck,
+  RefreshCw, Download, Send, ChevronDown, ChevronUp, ClipboardCheck, Plug,
 } from "lucide-react";
 
 const FW_LABELS: Record<string, string> = {
@@ -158,6 +158,10 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             <p className="text-xs text-zinc-600 font-mono mt-0.5">{assessment.id}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Link href={`/systems/${assessment.system_id}/connectors`}
+              className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors">
+              <Plug className="w-3.5 h-3.5" /> Connectors
+            </Link>
             <button onClick={handleRecollect} disabled={recollecting}
               className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${recollecting ? "animate-spin" : ""}`} />

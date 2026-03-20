@@ -73,16 +73,18 @@ Evidence is the core of a defensible compliance record. Compass collects it in t
 
 | Connector | What it collects |
 |-----------|-----------------|
-| GitHub | CI/CD results, test coverage, PR reviews, release history, branch protection status |
-| Azure DevOps | Pipeline results, release records, work item history |
-| Jira | Risk tickets, compliance tasks, incident records |
+| GitHub | CI/CD workflow runs, test coverage, PR reviews, release history, branch protection status |
+| Azure DevOps | Pipeline build results, release records, work item history |
+| Jira | Risk and compliance tickets, incident records |
 | ServiceNow | Change requests, incidents, risk register entries |
-| AWS | CloudTrail logs, Config rules, IAM policies |
-| Azure | Activity logs, Policy compliance, role assignments |
+| AWS | CloudTrail audit logs, Config rule compliance, SageMaker model records |
+| Azure | Activity Log events, Policy compliance state, role assignments |
 
-Connectors are configured per system in the system settings. When evidence is older than the configured threshold (default 30 days), Compass flags it as stale so you know what needs refreshing before an audit.
+Connectors are configured per system under the Connectors page, accessible from the assessment detail view. Each connector stores only the credentials you provide and never exposes them back through the API. Evidence is pulled when you click Re-collect on an assessment and mapped automatically to the relevant framework controls.
 
 **Manual evidence** lets assessors enter free-text notes, paste in document references, or link to artefacts in other systems for controls that automated collection cannot cover.
+
+When evidence is older than the configured threshold (default 30 days), Compass flags it as stale so you know what needs refreshing before an audit.
 
 ### Findings management
 
