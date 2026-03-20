@@ -158,13 +158,6 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             <p className="text-xs text-zinc-600 font-mono mt-0.5">{assessment.id}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {assessment.status === "draft" && (
-              <Link href={`/assessments/${id}/questionnaire`}
-                className="inline-flex items-center gap-1.5 text-sm font-medium bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/40 text-blue-300 hover:text-blue-200 px-3 py-1.5 rounded-lg transition-colors">
-                <ClipboardCheck className="w-3.5 h-3.5" />
-                Guided Questionnaire
-              </Link>
-            )}
             <button onClick={handleRecollect} disabled={recollecting}
               className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${recollecting ? "animate-spin" : ""}`} />
@@ -230,6 +223,24 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               </span>
             )}
           </div>
+        </div>
+
+        {/* guided questionnaire banner */}
+        <div className="flex items-center justify-between gap-4 bg-blue-600/10 border border-blue-500/30 rounded-xl px-5 py-4">
+          <div className="flex items-start gap-3">
+            <ClipboardCheck className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-blue-300">Guided Questionnaire</p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Answer {assessment.frameworks.length > 0 ? "25–38" : "38"} questions and let Compass auto-fill all evidence fields for you.
+              </p>
+            </div>
+          </div>
+          <Link href={`/assessments/${id}/questionnaire`}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors">
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            Start
+          </Link>
         </div>
 
         {/* framework tabs */}
